@@ -1,5 +1,5 @@
 /*
- * Nuklear - v1.00 - public domain
+ * Nuklear - 1.32.0 - public domain
  * no warrenty implied; use at your own risk.
  * authored from 2015-2016 by Micha Mettke
  */
@@ -205,7 +205,7 @@ nk_d3d11_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
     case WM_SYSKEYDOWN:
     case WM_SYSKEYUP:
     {
-        int down = (lparam >> 31) & 1;
+        int down = !((lparam >> 31) & 1);
         int ctrl = GetKeyState(VK_CONTROL) & (1 << 15);
 
         switch (wparam)

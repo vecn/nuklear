@@ -14,7 +14,7 @@ render backends it only focuses on the actual UI.
 - Immediate mode graphical user interface toolkit
 - Single header library
 - Written in C89 (ANSI C)
-- Small codebase (~15kLOC)
+- Small codebase (~17kLOC)
 - Focus on portability, efficiency and simplicity
 - No dependencies (not even the standard library if not wanted)
 - Fully skinnable and customizable
@@ -58,8 +58,7 @@ int op = EASY;
 float value = 0.6f;
 int i =  20;
 
-struct nk_panel layout;
-if (nk_begin(&ctx, &layout, "Show", nk_rect(50, 50, 220, 220),
+if (nk_begin(&ctx, "Show", nk_rect(50, 50, 220, 220),
     NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_CLOSABLE)) {
     /* fixed widget pixel width */
     nk_layout_row_static(&ctx, 30, 80, 1);
@@ -89,7 +88,8 @@ nk_end(&ctx);
 ## Bindings:
 Java: https://github.com/glegris/nuklear4j  
 Golang: https://github.com/golang-ui/nuklear  
-Rust: https://github.com/snuk182/nuklear-rust
+Rust: https://github.com/snuk182/nuklear-rust  
+Chicken: https://github.com/wasamasa/nuklear
 
 ## Credits:
 Developed by Micha Mettke and every direct or indirect contributor to the GitHub.

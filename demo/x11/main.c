@@ -1,4 +1,4 @@
-/* nuklear - v1.09 - public domain */
+/* nuklear - v1.32.0 - public domain */
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -155,10 +155,10 @@ main(void)
         nk_input_end(ctx);
 
         /* GUI */
-        {struct nk_panel layout;
-        if (nk_begin(ctx, &layout, "Demo", nk_rect(50, 50, 200, 200),
+        if (nk_begin(ctx, "Demo", nk_rect(50, 50, 200, 200),
             NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
-            NK_WINDOW_CLOSABLE|NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
+            NK_WINDOW_CLOSABLE|NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE|
+            NK_WINDOW_SCALE_LEFT))
         {
             enum {EASY, HARD};
             static int op = EASY;
@@ -173,7 +173,7 @@ main(void)
             nk_layout_row_dynamic(ctx, 25, 1);
             nk_property_int(ctx, "Compression:", 0, &property, 100, 10, 1);
         }
-        nk_end(ctx);}
+        nk_end(ctx);
         if (nk_window_is_closed(ctx, "Demo")) break;
 
         /* -------------- EXAMPLES ---------------- */

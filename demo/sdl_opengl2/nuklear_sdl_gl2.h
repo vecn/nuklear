@@ -1,5 +1,5 @@
 /*
- * Nuklear - v1.00 - public domain
+ * Nuklear - 1.32.0 - public domain
  * no warrenty implied; use at your own risk.
  * authored from 2015-2016 by Micha Mettke
  */
@@ -284,6 +284,10 @@ nk_sdl_handle_event(SDL_Event *evt)
             nk_input_key(ctx, NK_KEY_TEXT_LINE_START, down && state[SDL_SCANCODE_LCTRL]);
         else if (sym == SDLK_e)
             nk_input_key(ctx, NK_KEY_TEXT_LINE_END, down && state[SDL_SCANCODE_LCTRL]);
+        else if (sym == SDLK_UP)
+            nk_input_key(ctx, NK_KEY_UP, down);
+        else if (sym == SDLK_DOWN)
+            nk_input_key(ctx, NK_KEY_DOWN, down);
         else if (sym == SDLK_LEFT) {
             if (state[SDL_SCANCODE_LCTRL])
                 nk_input_key(ctx, NK_KEY_TEXT_WORD_LEFT, down);

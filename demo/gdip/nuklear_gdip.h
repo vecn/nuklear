@@ -1,7 +1,7 @@
 /*
- * Nuklear - v1.00 - public domain
+ * Nuklear - 1.32.0 - public domain
  * no warrenty implied; use at your own risk.
- * authored from 2015-2016 by Micha Mettke
+ * authored from 2015-2017 by Micha Mettke
  */
 /*
  * ==============================================================
@@ -19,6 +19,7 @@
 /* font */
 typedef struct GdipFont GdipFont;
 NK_API GdipFont* nk_gdipfont_create(const char *name, int size);
+NK_API GdipFont* nk_gdipfont_create_mem(unsigned char *membuf, int membufSize, int size);
 NK_API void nk_gdipfont_del(GdipFont *font);
 
 NK_API struct nk_context* nk_gdip_init(HWND hwnd, unsigned int width, unsigned int height);
@@ -26,6 +27,10 @@ NK_API void nk_gdip_set_font(GdipFont *font);
 NK_API int nk_gdip_handle_event(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 NK_API void nk_gdip_render(enum nk_anti_aliasing AA, struct nk_color clear);
 NK_API void nk_gdip_shutdown(void);
+
+/* image */
+NK_API struct nk_image nk_gdip_load_image_from_file(const WCHAR* filename);
+NK_API struct nk_image nk_gdip_load_image_from_memory(const void* membuf, int membufSize);
 
 #endif
 /*
@@ -191,6 +196,18 @@ GdipDisposeImage(GpImage *image);
 GpStatus WINGDIPAPI
 GdipGetImageGraphicsContext(GpImage *image, GpGraphics **graphics);
 
+GpStatus WINGDIPAPI
+GdipGetImageWidth(GpImage *image, UINT *width);
+
+GpStatus WINGDIPAPI
+GdipGetImageHeight(GpImage *image, UINT *height);
+
+GpStatus WINGDIPAPI
+GdipLoadImageFromFile(GDIPCONST WCHAR* filename, GpImage **image);
+
+GpStatus WINGDIPAPI
+GdipLoadImageFromStream(IStream* stream, GpImage **image);
+
 /* pen */
 
 GpStatus WINGDIPAPI
@@ -250,6 +267,21 @@ GdipSetStringFormatFlags(GpStringFormat *format, INT flags);
 GpStatus WINGDIPAPI
 GdipDeleteStringFormat(GpStringFormat *format);
 
+GpStatus WINGDIPAPI 
+GdipPrivateAddMemoryFont(GpFontCollection* fontCollection, 
+                         GDIPCONST void* memory, INT length);
+
+GpStatus WINGDIPAPI 
+GdipNewPrivateFontCollection(GpFontCollection** fontCollection);
+
+GpStatus WINGDIPAPI 
+GdipDeletePrivateFontCollection(GpFontCollection** fontCollection);
+
+GpStatus WINGDIPAPI 
+GdipGetFontCollectionFamilyList(GpFontCollection* fontCollection, 
+                                INT numSought, GpFontFamily* gpfamilies[], INT* numFound);
+
+
 /* graphics */
 
 
@@ -283,7 +315,7 @@ GdipFillPieI(GpGraphics *graphics, GpBrush *brush, INT x, INT y,
 
 GpStatus WINGDIPAPI
 GdipDrawRectangleI(GpGraphics *graphics, GpPen *pen, INT x, INT y,
-                      INT width, INT height);
+                   INT width, INT height);
 
 GpStatus WINGDIPAPI
 GdipFillRectangleI(GpGraphics *graphics, GpBrush *brush, INT x, INT y,
@@ -326,6 +358,10 @@ GdipGraphicsClear(GpGraphics *graphics, ARGB color);
 GpStatus WINGDIPAPI
 GdipDrawImageI(GpGraphics *graphics, GpImage *image, INT x, INT y);
 
+GpStatus WINGDIPAPI 
+GdipDrawImageRectI(GpGraphics *graphics, GpImage *image, INT x, INT y, 
+                   INT width, INT height);
+
 GpStatus WINGDIPAPI
 GdipMeasureString(
     GpGraphics               *graphics,
@@ -357,6 +393,7 @@ static struct {
     GpPen *pen;
     GpSolidFill *brush;
     GpStringFormat *format;
+    GpFontCollection *fontCollection;
 
     struct nk_context ctx;
 } gdip;
@@ -392,13 +429,13 @@ nk_gdip_stroke_rect(short x, short y, unsigned short w,
     } else {
         INT d = 2 * r;
         GdipDrawArcI(gdip.memory, gdip.pen, x, y, d, d, 180, 90);
-        GdipDrawLineI(gdip.memory, gdip.pen, x + d, y, x + w - d, y);
+        GdipDrawLineI(gdip.memory, gdip.pen, x + r, y, x + w - r, y);
         GdipDrawArcI(gdip.memory, gdip.pen, x + w - d, y, d, d, 270, 90);
-        GdipDrawLineI(gdip.memory, gdip.pen, x + w, y + d, x + w, y + h - d);
+        GdipDrawLineI(gdip.memory, gdip.pen, x + w, y + r, x + w, y + h - r);
         GdipDrawArcI(gdip.memory, gdip.pen, x + w - d, y + h - d, d, d, 0, 90);
-        GdipDrawLineI(gdip.memory, gdip.pen, x, y + d, x + w, y + h - d);
+        GdipDrawLineI(gdip.memory, gdip.pen, x, y + r, x, y + h - r);
         GdipDrawArcI(gdip.memory, gdip.pen, x, y + h - d, d, d, 90, 90);
-        GdipDrawLineI(gdip.memory, gdip.pen, x + d, y + h, x + w - d, y + h);
+        GdipDrawLineI(gdip.memory, gdip.pen, x + r, y + h, x + w - r, y + h);
     }
 }
 
@@ -411,8 +448,8 @@ nk_gdip_fill_rect(short x, short y, unsigned short w,
         GdipFillRectangleI(gdip.memory, gdip.brush, x, y, w, h);
     } else {
         INT d = 2 * r;
-        GdipFillRectangleI(gdip.memory, gdip.brush, x + r, y, w - d, h);
-        GdipFillRectangleI(gdip.memory, gdip.brush, x, y + r, w, h - d);
+        GdipFillRectangleI(gdip.memory, gdip.brush, x + r - 1, y, w - d + 2, h);
+        GdipFillRectangleI(gdip.memory, gdip.brush, x, y + r - 1, w, h - d + 2);
         GdipFillPieI(gdip.memory, gdip.brush, x, y, d, d, 180, 90);
         GdipFillPieI(gdip.memory, gdip.brush, x + w - d, y, d, d, 270, 90);
         GdipFillPieI(gdip.memory, gdip.brush, x + w - d, y + h - d, d, d, 0, 90);
@@ -539,6 +576,14 @@ nk_gdip_draw_text(short x, short y, unsigned short w, unsigned short h,
 }
 
 static void
+nk_gdip_draw_image(short x, short y, unsigned short w, unsigned short h,
+    struct nk_image img, struct nk_color col)
+{
+    GpImage *image = img.handle.ptr;
+    GdipDrawImageRectI(gdip.memory, image, x, y, w, h);
+}
+
+static void
 nk_gdip_clear(struct nk_color col)
 {
     GdipGraphicsClear(gdip.memory, convert_color(col));
@@ -548,6 +593,43 @@ static void
 nk_gdip_blit(GpGraphics *graphics)
 {
     GdipDrawImageI(graphics, gdip.bitmap, 0, 0);
+}
+
+struct nk_image
+nk_gdip_image_to_nk(GpImage *image){
+    struct nk_image img;
+    UINT uwidth, uheight;
+    img = nk_image_ptr( (void*)image );
+    GdipGetImageHeight(image, &uheight);
+    GdipGetImageWidth(image, &uwidth);
+    img.h = uheight;
+    img.w = uwidth;
+    return img;
+}
+
+struct nk_image
+nk_gdip_load_image_from_file(GDIPCONST WCHAR *filename)
+{
+    GpImage *image;
+    GdipLoadImageFromFile(filename, &image);
+    return nk_gdip_image_to_nk(image);
+}
+
+struct nk_image
+nk_gdip_load_image_from_memory(const void *membuf, int membufSize)
+{
+    GpImage *image = NULL;
+    IStream *pStream = NULL;
+    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, membufSize);
+    LPVOID pImage = GlobalLock(hMem);
+    nk_memcopy(pImage, membuf, membufSize);
+    GlobalUnlock(hMem);
+    
+    /* CreateStreamOnHGlobal needs OLE32 in linked libraries list */
+    CreateStreamOnHGlobal(hMem, FALSE, &pStream);
+    GdipLoadImageFromStream(pStream, &image);
+    GlobalFree(hMem);
+    return nk_gdip_image_to_nk(image);
 }
 
 GdipFont*
@@ -565,6 +647,20 @@ nk_gdipfont_create(const char *name, int size)
     GdipCreateFont(family, (REAL)size, FontStyleRegular, UnitPixel, &font->handle);
     GdipDeleteFontFamily(family);
 
+    return font;
+}
+
+GdipFont*
+nk_gdipfont_create_mem(unsigned char *membuf, int membufSize, int size)
+{
+    GdipFont *font = (GdipFont*)calloc(1, sizeof(GdipFont));
+    GpFontFamily *families[1];
+    INT numFound;
+ 
+    if( GdipNewPrivateFontCollection(&gdip.fontCollection) ) return NULL;
+    if( GdipPrivateAddMemoryFont(gdip.fontCollection, membuf, membufSize) ) return NULL;
+    if( GdipGetFontCollectionFamilyList(gdip.fontCollection, 1, families, &numFound) ) return NULL;
+    if( GdipCreateFont(families[0], (REAL)size, FontStyleRegular, UnitPixel, &font->handle) ) return NULL;
     return font;
 }
 
@@ -702,6 +798,7 @@ nk_gdip_init(HWND hwnd, unsigned int width, unsigned int height)
         StringFormatFlagsMeasureTrailingSpaces | StringFormatFlagsNoWrap |
         StringFormatFlagsNoClip);
 
+    gdip.fontCollection = NULL;
     nk_init_default(&gdip.ctx, NULL);
     gdip.ctx.clip.copy = nk_gdip_clipbard_copy;
     gdip.ctx.clip.paste = nk_gdip_clipbard_paste;
@@ -754,7 +851,7 @@ nk_gdip_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
     case WM_SYSKEYDOWN:
     case WM_SYSKEYUP:
     {
-        int down = (lparam >> 31) & 1;
+        int down = !((lparam >> 31) & 1);
         int ctrl = GetKeyState(VK_CONTROL) & (1 << 15);
 
         switch (wparam)
@@ -904,6 +1001,7 @@ nk_gdip_handle_event(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 NK_API void
 nk_gdip_shutdown(void)
 {
+    GdipDeletePrivateFontCollection( &gdip.fontCollection );
     GdipDeleteGraphics(gdip.window);
     GdipDeleteGraphics(gdip.memory);
     GdipDisposeImage(gdip.bitmap);
@@ -991,8 +1089,11 @@ nk_gdip_render(enum nk_anti_aliasing AA, struct nk_color clear)
             nk_gdip_stroke_curve(q->begin, q->ctrl[0], q->ctrl[1],
                 q->end, q->line_thickness, q->color);
         } break;
+        case NK_COMMAND_IMAGE: {
+            const struct nk_command_image *i = (const struct nk_command_image *)cmd;
+            nk_gdip_draw_image(i->x, i->y, i->w, i->h, i->img, i->col);
+        } break;
         case NK_COMMAND_RECT_MULTI_COLOR:
-        case NK_COMMAND_IMAGE:
         case NK_COMMAND_ARC:
         case NK_COMMAND_ARC_FILLED:
         default: break;
@@ -1003,4 +1104,3 @@ nk_gdip_render(enum nk_anti_aliasing AA, struct nk_color clear)
 }
 
 #endif
-
